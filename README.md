@@ -81,18 +81,22 @@ You need: a [Railway](https://railway.app) account (GitHub login works), this re
 
 1. **Create the project.** In the Railway dashboard click **New Project → Deploy from GitHub repo**, authorize Railway to access GitHub if asked, and pick `BEAUTYSUPPLYMSK/beauty-landing-2026`. Railway detects the `Dockerfile` and uses it as the build source (also declared in `railway.json`).
 2. **Add PostgreSQL.** In the project canvas click **+ New → Database → Add PostgreSQL**. A `Postgres` service appears alongside your bot service.
-3. **Set the environment variables.** Click the **bot service → Variables** tab and add:
+3. **Set the environment variables.** Railway does **not** read `.env.example` from the repo — variables must be added manually. The fastest way is to import the ready-made list:
+
+   - Open the **bot service → Variables** tab → **Import Variables**.
+   - Paste the entire contents of [`railway-vars.env`](railway-vars.env) from this repo. All variable names appear at once with empty (or default) values.
+   - Now just fill in the values:
 
    | Variable | Value |
    |---|---|
    | `BOT_TOKEN` | the token from @BotFather |
    | `CHANNEL_ID` | `-100…` numeric ID or `@channelname` |
    | `ADMIN_IDS` | e.g. `111111111,222222222` |
-   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` *(type it exactly like this — it's a reference to the Postgres plugin)* |
-   | `TIMEZONE` | `Europe/Moscow` (optional, this is the default) |
-   | `RUN_MODE` | `polling` (optional, this is the default) |
+   | `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` — if it was imported as a literal string, open the value and pick **Variable Reference → Postgres.DATABASE_URL** |
+   | `TIMEZONE` | `Europe/Moscow` (already prefilled) |
+   | `RUN_MODE` | `polling` (already prefilled) |
 
-   Do **not** set `WEBHOOK_URL` — it is only used in webhook mode (see below). Do **not** configure an HTTP health-check path in Settings: in polling mode the worker exposes no port, and a health check would keep the deploy from ever going "healthy".
+   You can also add the variables one-by-one instead of importing. Do **not** set `WEBHOOK_URL` — it is only used in webhook mode (see below). Do **not** configure an HTTP health-check path in Settings: in polling mode the worker exposes no port, and a health check would keep the deploy from ever going "healthy".
 4. **Deploy.** Railway builds and deploys automatically after you save the variables (or click **Deploy** if prompted). Wait for the build to finish.
 5. **Check the logs.** Open the bot service → **Deployments → View Logs**. A healthy start looks like:
 
