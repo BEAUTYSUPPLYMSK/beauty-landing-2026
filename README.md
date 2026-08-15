@@ -143,4 +143,4 @@ All commands are sent to the bot in a private chat. Commands marked 🔒 work fo
 
 ## Environment variables
 
-See [`.env.example`](.env.example) for the documented list: `BOT_TOKEN`, `CHANNEL_ID`, `ADMIN_IDS`, `DATABASE_URL`, `TIMEZONE`, `RUN_MODE`, `WEBHOOK_URL` (webhook mode only).
+See [`.env.example`](.env.example) for the documented list: `BOT_TOKEN`, `CHANNEL_ID`, `ADMIN_IDS`, `DATABASE_URL`, `TIMEZONE`, `RUN_MODE`, and — webhook mode only — `WEBHOOK_URL`, `WEBHOOK_SECRET` and `PORT`.

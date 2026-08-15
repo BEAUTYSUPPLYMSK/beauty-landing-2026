@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
-from html import escape
+from html import escape, unescape
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -18,6 +19,7 @@ from bot.db.models import Post
 from bot.db.repo import Repo, buttons_from_json
 from bot.handlers.deps import Deps
 from bot.handlers.filters import IsAdmin
+from bot.handlers.newpost import MAX_CAPTION, MAX_TEXT
 
 router = Router(name="manage")
 router.message.filter(IsAdmin())
@@ -43,10 +45,16 @@ class ManageEdit(StatesGroup):
     reschedule = State()
 
 
+_TAG_RE = re.compile(r"<[^>]*>")
+
+
 def _summary(post: Post, tz) -> str:
     icon = STATUS_ICONS.get(post.status, "❓")
     name = STATUS_NAMES.get(post.status, post.status)
-    snippet = (post.text or "(без текста)").replace("\n", " ")
+    # post.text is stored HTML-escaped (with formatting tags) — strip tags and
+    # unescape entities so the one-line summary reads as plain text.
+    snippet = unescape(_TAG_RE.sub("", post.text or "(без текста)"))
+    snippet = " ".join(snippet.split())
     if len(snippet) > 40:
         snippet = snippet[:40] + "…"
     extra = ""
@@ -249,7 +257,13 @@ async def post_action(callback: CallbackQuery, state: FSMContext, deps: Deps) ->
             await callback.answer("Пост не опубликован", show_alert=True)
             return
         await callback.answer()
-        removed = await deps.publisher.delete_published(post)
+        try:
+            removed = await deps.publisher.delete_published(post)
+        except Exception as exc:  # noqa: BLE001
+            await callback.message.answer(
+                f"❌ Не удалось удалить из канала: <code>{escape(str(exc))}</code>"
+            )
+            return
         await deps.repo.set_status(post_id, post_states.DELETED)
         await callback.message.answer(
             f"🗑 Пост #{post_id} удалён из канала (сообщений удалено: {removed})."
@@ -271,11 +285,11 @@ async def manage_new_text(message: Message, state: FSMContext, deps: Deps) -> No
         await state.clear()
         await message.answer("Пост не найден.")
         return
-    if post.photos and len(text) > 1024:
-        await message.answer(f"Для поста с фото максимум 1024 символа (сейчас {len(text)}).")
+    if post.photos and len(text) > MAX_CAPTION:
+        await message.answer(f"Для поста с фото максимум {MAX_CAPTION} символов (сейчас {len(text)}).")
         return
-    if len(text) > 4096:
-        await message.answer(f"Максимум 4096 символов (сейчас {len(text)}).")
+    if len(text) > MAX_TEXT:
+        await message.answer(f"Максимум {MAX_TEXT} символов (сейчас {len(text)}).")
         return
 
     await deps.repo.update_post_text(post_id, text)

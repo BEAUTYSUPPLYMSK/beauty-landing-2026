@@ -10,7 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
-from bot.core.render import extract_placeholders, render_template
+from bot.core.render import extract_placeholders, render_template_escaped
 from bot.handlers import newpost
 from bot.handlers.deps import Deps
 from bot.handlers.filters import IsAdmin
@@ -89,7 +89,7 @@ async def tpl_use(callback: CallbackQuery, state: FSMContext, deps: Deps) -> Non
     post = await deps.repo.create_post(callback.from_user.id)
 
     if not placeholders:
-        await deps.repo.update_post_text(post.id, template.body)
+        await deps.repo.update_post_text(post.id, render_template_escaped(template.body))
         await callback.message.answer(
             f"📝 Пост #{post.id} создан из шаблона «{escape(template.name)}»."
         )
@@ -134,10 +134,13 @@ async def tpl_fill_value(message: Message, state: FSMContext, deps: Deps) -> Non
         await message.answer(_ask_line(placeholders[index], index + 1, len(placeholders)))
         return
 
-    text = render_template(data["body"], values)
+    # Store the text HTML-escaped (same invariant as the /new flow): values are
+    # admin-typed and may contain '<', '&' etc., which would otherwise break the
+    # channel post sent with parse_mode=HTML.
+    text = render_template_escaped(data["body"], values)
     post_id = int(data["post_id"])
     await deps.repo.update_post_text(post_id, text)
-    await message.answer("✅ Текст поста готов:\n\n" + escape(text))
+    await message.answer("✅ Текст поста готов:\n\n" + text)
     await newpost.continue_with_text(message, state, deps, post_id)
 
 

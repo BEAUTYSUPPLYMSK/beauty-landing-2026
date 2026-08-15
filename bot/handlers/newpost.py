@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from html import escape
 
 from aiogram import F, Router
 from aiogram.filters import Command
@@ -154,7 +155,6 @@ async def photos_clear(callback: CallbackQuery, state: FSMContext, deps: Deps) -
 async def photos_done(callback: CallbackQuery, state: FSMContext, deps: Deps) -> None:
     post = await deps.repo.get_post(await _post_id(state))
     if post.photos and post.text and len(post.text) > MAX_CAPTION:
-        await callback.answer()
         await callback.message.answer(
             f"⚠️ Для поста с фото текст ограничен {MAX_CAPTION} символами "
             f"(сейчас {len(post.text)}). Сократите текст: нажмите «✏️ Текст» "
@@ -168,7 +168,8 @@ async def photos_done(callback: CallbackQuery, state: FSMContext, deps: Deps) ->
         "<code>Текст | https://ссылка</code>\n"
         "Две кнопки в ряд: <code>Кнопка 1 | ссылка && Кнопка 2 | ссылка</code>\n\n"
         "Пример:\n<code>🛍 Каталог | https://t.me/BEAUTYSUPPLYMSK\n"
-        "💬 Написать нам | https://wa.me/79990000000</code>",
+        "💬 Написать нам | https://wa.me/79990000000</code>\n\n"
+        "Отправьте <code>-</code>, чтобы убрать кнопки.",
         reply_markup=_buttons_kb(),
     )
 
@@ -189,8 +190,13 @@ async def no_buttons(callback: CallbackQuery, state: FSMContext, deps: Deps) -> 
 
 @router.message(Compose.buttons, F.text)
 async def got_buttons(message: Message, state: FSMContext, deps: Deps) -> None:
+    raw = message.text.strip()
+    if raw == "-":
+        await deps.repo.update_post_buttons(await _post_id(state), None)
+        await _show_preview(message, state, deps)
+        return
     try:
-        rows = parse_buttons(message.text)
+        rows = parse_buttons(raw)
     except ValueError as exc:
         await message.answer(f"⚠️ {exc}\n\nПопробуйте ещё раз или нажмите «Без кнопок».",
                              reply_markup=_buttons_kb())
@@ -217,7 +223,7 @@ async def action_publish(callback: CallbackQuery, state: FSMContext, deps: Deps)
         await deps.publisher.publish(post)
     except Exception as exc:  # noqa: BLE001
         await callback.message.answer(
-            f"❌ Не удалось опубликовать: <code>{exc}</code>\n"
+            f"❌ Не удалось опубликовать: <code>{escape(str(exc))}</code>\n"
             "Проверьте, что бот добавлен в канал как администратор."
         )
         return
