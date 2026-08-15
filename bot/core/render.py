@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from html import escape
 
 _PLACEHOLDER_RE = re.compile(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}")
 
@@ -20,6 +21,17 @@ def render_template(body: str, variables: dict[str, object] | None = None) -> st
     """
     variables = variables or {}
     return body.format_map(_SafeDict({k: str(v) for k, v in variables.items()}))
+
+
+def render_template_escaped(body: str, variables: dict[str, object] | None = None) -> str:
+    """Render a template and HTML-escape the result.
+
+    Post text is stored and published with parse_mode=HTML, so admin-typed
+    values may contain '<', '&' etc. and must be escaped at store time —
+    otherwise publishing would fail with "can't parse entities" (or inject
+    formatting). Unknown placeholders survive escaping as-is.
+    """
+    return escape(render_template(body, variables))
 
 
 def extract_placeholders(body: str) -> list[str]:

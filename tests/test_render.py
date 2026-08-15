@@ -1,4 +1,4 @@
-from bot.core.render import extract_placeholders, render_template
+from bot.core.render import extract_placeholders, render_template, render_template_escaped
 
 
 def test_render_substitutes_known_placeholders():
@@ -25,3 +25,18 @@ def test_extract_placeholders_ordered_unique():
 
 def test_extract_placeholders_empty():
     assert extract_placeholders("нет полей") == []
+
+
+def test_render_escaped_sanitizes_values():
+    out = render_template_escaped("{name} за {price} ₽", {"name": "<b>крем</b>", "price": "100&500"})
+    # Escaped so publishing with parse_mode=HTML is safe and shows literal text.
+    assert out == "&lt;b&gt;крем&lt;/b&gt; за 100&amp;500 ₽"
+
+
+def test_render_escaped_keeps_unknown_placeholders():
+    out = render_template_escaped("{missing} & {known}", {"known": "да"})
+    assert out == "{missing} &amp; да"
+
+
+def test_render_escaped_no_placeholders():
+    assert render_template_escaped("Просто текст") == "Просто текст"

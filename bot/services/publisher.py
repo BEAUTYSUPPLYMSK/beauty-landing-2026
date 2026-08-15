@@ -45,6 +45,9 @@ class Publisher:
         photos = post.photos
         text = post.text or ""
 
+        if not photos and not text.strip():
+            raise ValueError("Пост пуст — добавьте текст или фото перед публикацией.")
+
         if not photos:
             message = await self.bot.send_message(
                 self.channel_id, text, reply_markup=markup, disable_web_page_preview=False
@@ -57,7 +60,7 @@ class Publisher:
             message_ids = [message.message_id]
         else:
             media = [
-                InputMediaPhoto(media=p.file_id, caption=text if i == 0 else None)
+                InputMediaPhoto(media=p.file_id, caption=(text or None) if i == 0 else None)
                 for i, p in enumerate(photos)
             ]
             messages = await self.bot.send_media_group(self.channel_id, media)
